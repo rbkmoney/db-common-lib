@@ -8,6 +8,6 @@ build('db-common-lib', 'docker-host') {
         javaLibPipeline = load("build_utils/jenkins_lib/pipeJavaLib.groovy")
     }
 
-    def buildImageTag = "269686d735abef363f9f40a1bf4e1b7c751f3722"
+    def buildImageTag = "fcf116dd775cc2e91bffb6a36835754e3f2d5321"
     javaLibPipeline(buildImageTag)
 }
