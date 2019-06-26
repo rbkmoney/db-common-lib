@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport implements GenericDao {
@@ -220,17 +221,18 @@ public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport im
     }
 
     @Override
-    public void batchExecute(List<Query> queries) throws DaoException {
-        batchExecute(queries, -1);
+    public long batchExecute(List<Query> queries) throws DaoException {
+        return batchExecute(queries, -1);
     }
 
     @Override
-    public void batchExecute(List<Query> queries, int expectedRowsPerQueryAffected) throws DaoException {
-        batchExecute(queries, expectedRowsPerQueryAffected, getNamedParameterJdbcTemplate());
+    public long batchExecute(List<Query> queries, int expectedRowsAffected) throws DaoException {
+        return batchExecute(queries, expectedRowsAffected, getNamedParameterJdbcTemplate());
     }
 
     @Override
-    public void batchExecute(List<Query> queries, int expectedRowsPerQueryAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException {
+    public long batchExecute(List<Query> queries, int expectedRowsAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException {
+        AtomicLong affectedRowCounter = new AtomicLong();
         queries.stream()
                 .collect(
                         Collectors.groupingBy(
@@ -240,27 +242,31 @@ public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport im
                         )
                 )
                 .forEach(
-                        (namedSql, parameterSources) -> batchExecute(
-                                namedSql,
-                                parameterSources,
-                                expectedRowsPerQueryAffected,
-                                namedParameterJdbcTemplate
-                        )
+                        (namedSql, parameterSources) -> {
+                            long affectedRowCount = batchExecute(
+                                    namedSql,
+                                    parameterSources,
+                                    expectedRowsAffected,
+                                    namedParameterJdbcTemplate
+                            );
+                            affectedRowCounter.getAndAccumulate(affectedRowCount, Long::sum);
+                        }
                 );
+        return affectedRowCounter.get();
     }
 
     @Override
-    public void batchExecute(String namedSql, List<SqlParameterSource> parameterSources) throws DaoException {
-        batchExecute(namedSql, parameterSources, -1);
+    public long batchExecute(String namedSql, List<SqlParameterSource> parameterSources) throws DaoException {
+        return batchExecute(namedSql, parameterSources, -1);
     }
 
     @Override
-    public void batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsPerQueryAffected) throws DaoException {
-        batchExecute(namedSql, parameterSources, expectedRowsPerQueryAffected, getNamedParameterJdbcTemplate());
+    public long batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsAffected) throws DaoException {
+        return batchExecute(namedSql, parameterSources, expectedRowsAffected, getNamedParameterJdbcTemplate());
     }
 
     @Override
-    public void batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsPerQueryAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException {
+    public long batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException {
         try {
             int[] rowsPerBatchAffected = namedParameterJdbcTemplate.batchUpdate(namedSql, parameterSources.toArray(new SqlParameterSource[0]));
 
@@ -268,11 +274,17 @@ public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport im
                 throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(namedSql, parameterSources.size(), rowsPerBatchAffected.length);
             }
 
-            for (int rowsAffected : rowsPerBatchAffected) {
-                if (expectedRowsPerQueryAffected != -1 && rowsAffected != expectedRowsPerQueryAffected) {
-                    throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(namedSql, expectedRowsPerQueryAffected, rowsAffected);
+            int count = 0;
+            for (int i : rowsPerBatchAffected) {
+                count += i;
+            }
+            if (expectedRowsAffected != -1) {
+                if (count != expectedRowsAffected) {
+                    throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(namedSql, expectedRowsAffected, count);
                 }
             }
+
+            return count;
         } catch (NestedRuntimeException ex) {
             throw new DaoException(ex);
         }
