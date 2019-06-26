@@ -17,9 +17,12 @@ import org.springframework.jdbc.support.KeyHolder;
 import javax.sql.DataSource;
 import java.sql.Types;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport implements GenericDao {
 
@@ -217,6 +220,76 @@ public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport im
         }
     }
 
+    @Override
+    public long batchExecute(List<Query> queries) throws DaoException {
+        return batchExecute(queries, -1);
+    }
+
+    @Override
+    public long batchExecute(List<Query> queries, int expectedRowsAffected) throws DaoException {
+        return batchExecute(queries, expectedRowsAffected, getNamedParameterJdbcTemplate());
+    }
+
+    @Override
+    public long batchExecute(List<Query> queries, int expectedRowsAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException {
+        AtomicLong affectedRowCounter = new AtomicLong();
+        queries.stream()
+                .collect(
+                        Collectors.groupingBy(
+                                query -> query.getSQL(ParamType.NAMED),
+                                LinkedHashMap::new,
+                                Collectors.mapping(query -> toSqlParameterSource(query.getParams()), Collectors.toList())
+                        )
+                )
+                .forEach(
+                        (namedSql, parameterSources) -> {
+                            long affectedRowCount = batchExecute(
+                                    namedSql,
+                                    parameterSources,
+                                    expectedRowsAffected,
+                                    namedParameterJdbcTemplate
+                            );
+                            affectedRowCounter.getAndAccumulate(affectedRowCount, Long::sum);
+                        }
+                );
+        return affectedRowCounter.get();
+    }
+
+    @Override
+    public long batchExecute(String namedSql, List<SqlParameterSource> parameterSources) throws DaoException {
+        return batchExecute(namedSql, parameterSources, -1);
+    }
+
+    @Override
+    public long batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsAffected) throws DaoException {
+        return batchExecute(namedSql, parameterSources, expectedRowsAffected, getNamedParameterJdbcTemplate());
+    }
+
+    @Override
+    public long batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException {
+        try {
+            int[] rowsPerBatchAffected = namedParameterJdbcTemplate.batchUpdate(namedSql, parameterSources.toArray(new SqlParameterSource[0]));
+
+            if (rowsPerBatchAffected.length != parameterSources.size()) {
+                throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(namedSql, parameterSources.size(), rowsPerBatchAffected.length);
+            }
+
+            int count = 0;
+            for (int i : rowsPerBatchAffected) {
+                count += i;
+            }
+            if (expectedRowsAffected != -1) {
+                if (count != expectedRowsAffected) {
+                    throw new JdbcUpdateAffectedIncorrectNumberOfRowsException(namedSql, expectedRowsAffected, count);
+                }
+            }
+
+            return count;
+        } catch (NestedRuntimeException ex) {
+            throw new DaoException(ex);
+        }
+    }
+
     protected Condition appendDateTimeRangeConditions(Condition condition,
                                                       Field<LocalDateTime> field,
                                                       Optional<LocalDateTime> fromTime,
@@ -235,7 +308,13 @@ public abstract class AbstractGenericDao extends NamedParameterJdbcDaoSupport im
         MapSqlParameterSource sqlParameterSource = new MapSqlParameterSource();
         for (Map.Entry<String, Param<?>> entry : params.entrySet()) {
             Param<?> param = entry.getValue();
-            if (param.getValue() instanceof LocalDateTime || param.getValue() instanceof EnumType) {
+            Class<?> type = param.getDataType().getType();
+            if (String.class.isAssignableFrom(type)) {
+                String value = Optional.ofNullable(param.getValue())
+                        .map(stringValue -> ((String) stringValue).replace("\u0000", "\\u0000"))
+                        .orElse(null);
+                sqlParameterSource.addValue(entry.getKey(), value);
+            } else if (LocalDateTime.class.isAssignableFrom(type) || EnumType.class.isAssignableFrom(type)) {
                 sqlParameterSource.addValue(entry.getKey(), param.getValue(), Types.OTHER);
             } else {
                 sqlParameterSource.addValue(entry.getKey(), param.getValue());

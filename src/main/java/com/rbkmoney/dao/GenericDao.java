@@ -66,4 +66,15 @@ public interface GenericDao {
 
     int execute(String namedSql, SqlParameterSource parameterSource, int expectedRowsAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate, KeyHolder keyHolder) throws DaoException;
 
+    long batchExecute(List<Query> queries) throws DaoException;
+
+    long batchExecute(List<Query> queries, int expectedRowsPerQueryAffected) throws DaoException;
+
+    long batchExecute(List<Query> queries, int expectedRowsPerQueryAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException;
+
+    long batchExecute(String namedSql, List<SqlParameterSource> parameterSources) throws DaoException;
+
+    long batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsPerQueryAffected) throws DaoException;
+
+    long batchExecute(String namedSql, List<SqlParameterSource> parameterSources, int expectedRowsPerQueryAffected, NamedParameterJdbcTemplate namedParameterJdbcTemplate) throws DaoException;
 }
