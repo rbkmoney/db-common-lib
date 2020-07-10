@@ -6,19 +6,45 @@
     <parent>
         <groupId>com.rbkmoney</groupId>
         <artifactId>parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.5</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
     <packaging>jar</packaging>
 
     <artifactId>db-common-lib</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3</version>
+
+    <name>db-common-lib</name>
+    <description>Abstract dao and row mappers</description>
+    <url>https://github.com/rbkmoney/db-common-lib</url>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Vitaly Banin</name>
+            <email>v.banin@rbkmoney.com</email>
+            <organization>RBK.money</organization>
+            <organizationUrl>https://rbk.money</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/rbkmoney/db-common-lib.git</connection>
+        <developerConnection>scm:git:ssh://github.com/rbkmoney/db-common-lib.git</developerConnection>
+        <url>https://github.com/rbkmoney/db-common-lib/tree/master</url>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jooq.version>3.11.5</jooq.version>
-        <geck.common.version>0.6.9</geck.common.version>
+        <jooq.version>3.13.2</jooq.version>
+        <geck.common.version>0.6.11</geck.common.version>
     </properties>
 
     <dependencyManagement>
@@ -35,7 +61,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
-            <version>1.5.10.RELEASE</version>
+            <version>2.3.0.RELEASE</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
