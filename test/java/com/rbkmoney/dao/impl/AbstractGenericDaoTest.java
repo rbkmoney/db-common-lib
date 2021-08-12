@@ -33,8 +33,9 @@ public class AbstractGenericDaoTest {
     @Test
     public void batchExecuteTest() {
         final NamedParameterJdbcTemplate namedParameterJdbcTemplateMock = mock(NamedParameterJdbcTemplate.class);
-        int[] rowPerBatchAffected = { 1, 1 };
-        when(namedParameterJdbcTemplateMock.batchUpdate(anyString(), any(SqlParameterSource[].class))).thenReturn(rowPerBatchAffected);
+        int[] rowPerBatchAffected = {1, 1};
+        when(namedParameterJdbcTemplateMock.batchUpdate(anyString(), any(SqlParameterSource[].class)))
+                .thenReturn(rowPerBatchAffected);
         when(testDaoSpy.getNamedParameterJdbcTemplate()).thenReturn(namedParameterJdbcTemplateMock);
 
         final Map<String, Param<?>> firstParamMap = paramMapMock("testString", "testValue", String.class);
@@ -59,8 +60,9 @@ public class AbstractGenericDaoTest {
     @Test(expected = DaoException.class)
     public void batchExceptionTest() {
         final NamedParameterJdbcTemplate namedParameterJdbcTemplateMock = mock(NamedParameterJdbcTemplate.class);
-        int[] rowPerBatchAffected = { 1 };
-        when(namedParameterJdbcTemplateMock.batchUpdate(anyString(), any(SqlParameterSource[].class))).thenReturn(rowPerBatchAffected);
+        int[] rowPerBatchAffected = {1};
+        when(namedParameterJdbcTemplateMock.batchUpdate(anyString(), any(SqlParameterSource[].class)))
+                .thenReturn(rowPerBatchAffected);
         when(testDaoSpy.getNamedParameterJdbcTemplate()).thenReturn(namedParameterJdbcTemplateMock);
 
         final Map<String, Param<?>> firstParamMap = paramMapMock("testString", "testValue", String.class);

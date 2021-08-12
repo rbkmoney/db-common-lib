@@ -32,9 +32,11 @@ public class RecordRowMapper<T> implements RowMapper<T> {
             String columnName = rsMetaData.getColumnName(column);
             Field field = record.field(columnName);
 
-            Object value = getFieldValue(field, resultSet);
-            if (!resultSet.wasNull()) {
-                record.set(field, value);
+            if (field != null) {
+                Object value = getFieldValue(field, resultSet);
+                if (!resultSet.wasNull()) {
+                    record.set(field, value);
+                }
             }
         }
         return record.into(type);
